@@ -297,96 +297,170 @@ def fetch_fred(series_id, fred_key, n=7):
         print(f"[warn] FRED {series_id}: {e}")
         return None
 
-# ── economic sections ─────────────────────────────────────────────────────────
+# ── economic indicator definitions ────────────────────────────────────────────
+# Each entry: (display label, FRED series ID, subsection)
 
-ECON_SECTIONS = [
-    ("Growth", [
-        ("Real GDP (Index, 2017$)",         "GDP"),
-        ("Real GDP Per Capita",             "A939RX0Q048SBEA"),
-    ]),
-    ("Inflation", [
-        ("CPI – All Items (Index)",         "CPIAUCSL"),
-        ("Core CPI excl. Food & Energy",    "CPILFESL"),
-        ("PCE Price Index",                 "PCEPI"),
-        ("Core PCE Price Index",            "PCEPILFE"),
-        ("PPI – Final Demand",              "PPIFID"),
-        ("5-Yr Breakeven Inflation (%)",    "T5YIE"),
-        ("10-Yr Breakeven Inflation (%)",   "T10YIE"),
-    ]),
-    ("Labour Market", [
-        ("Unemployment Rate (%)",           "UNRATE"),
-        ("U-6 Underemployment Rate (%)",    "U6RATE"),
-        ("Nonfarm Payrolls (000s)",         "PAYEMS"),
-        ("Initial Jobless Claims",          "ICSA"),
-        ("Continuing Jobless Claims",       "CCSA"),
-        ("JOLTS Job Openings (000s)",       "JTSJOL"),
-        ("Labour Force Participation (%)",  "CIVPART"),
-    ]),
-    ("Monetary Policy", [
-        ("Federal Funds Rate (%)",          "FEDFUNDS"),
-        ("SOFR (%)",                        "SOFR"),
-        ("M2 Money Supply ($bn)",           "M2SL"),
-        ("Bank Credit ($bn)",               "TOTBKCR"),
-    ]),
-    ("Yield Curve", [
-        ("10Y-2Y Spread (%)",               "T10Y2Y"),
-        ("10Y-3M Spread (%)",               "T10Y3M"),
-        ("30-Year Mortgage Rate (%)",       "MORTGAGE30US"),
-    ]),
-    ("Housing", [
-        ("Housing Starts (000s)",           "HOUST"),
-        ("Building Permits (000s)",         "PERMIT"),
-        ("Existing Home Sales (mn)",        "EXHOSLUSM495S"),
-        ("S&P/CS Home Price Index",         "CSUSHPISA"),
-    ]),
-    ("Consumer & Retail", [
-        ("Retail & Food Services ($mn)",    "RSAFS"),
-        ("Personal Consumption ($bn)",      "PCE"),
-        ("Consumer Sentiment (U Mich)",     "UMCSENT"),
-        ("Personal Savings Rate (%)",       "PSAVERT"),
-    ]),
-    ("Manufacturing & Activity", [
-        ("Industrial Production (Index)",   "INDPRO"),
-        ("Capacity Utilisation (%)",        "TCU"),
-        ("Durable Goods Orders ($mn)",      "DGORDER"),
-    ]),
-    ("Trade & External", [
-        ("Trade Balance ($mn)",             "BOPGSTB"),
-        ("Exports of Goods & Services",     "EXPGS"),
-        ("Imports of Goods & Services",     "IMPGS"),
-    ]),
-    ("Credit Conditions", [
-        ("TED Spread (bp)",                 "TEDRATE"),
-        ("Credit Card Delinquency Rate (%)", "DRCCLACBS"),
-    ]),
+MONTHLY_INDICATORS = [
+    # Inflation
+    ("CPI – All Items (Index)",          "CPIAUCSL",       "Inflation"),
+    ("Core CPI excl. Food & Energy",     "CPILFESL",       "Inflation"),
+    ("PCE Price Index",                  "PCEPI",          "Inflation"),
+    ("Core PCE Price Index",             "PCEPILFE",       "Inflation"),
+    ("PPI – Final Demand",               "PPIFID",         "Inflation"),
+    ("5-Yr Breakeven Inflation (%)",     "T5YIE",          "Inflation"),
+    ("10-Yr Breakeven Inflation (%)",    "T10YIE",         "Inflation"),
+    # Labour Market
+    ("Unemployment Rate (%)",            "UNRATE",         "Labour Market"),
+    ("U-6 Underemployment Rate (%)",     "U6RATE",         "Labour Market"),
+    ("Nonfarm Payrolls (000s)",          "PAYEMS",         "Labour Market"),
+    ("Initial Jobless Claims",           "ICSA",           "Labour Market"),
+    ("Continuing Jobless Claims",        "CCSA",           "Labour Market"),
+    ("JOLTS Job Openings (000s)",        "JTSJOL",         "Labour Market"),
+    ("Labour Force Participation (%)",   "CIVPART",        "Labour Market"),
+    # Monetary Policy
+    ("Federal Funds Rate (%)",           "FEDFUNDS",       "Monetary Policy"),
+    ("SOFR (%)",                         "SOFR",           "Monetary Policy"),
+    ("M2 Money Supply ($bn)",            "M2SL",           "Monetary Policy"),
+    ("Bank Credit ($bn)",                "TOTBKCR",        "Monetary Policy"),
+    # Yield Curve
+    ("10Y-2Y Spread (%)",                "T10Y2Y",         "Yield Curve"),
+    ("10Y-3M Spread (%)",                "T10Y3M",         "Yield Curve"),
+    ("30-Year Mortgage Rate (%)",        "MORTGAGE30US",   "Yield Curve"),
+    # Housing
+    ("Housing Starts (000s)",            "HOUST",          "Housing"),
+    ("Building Permits (000s)",          "PERMIT",         "Housing"),
+    ("Existing Home Sales (mn)",         "EXHOSLUSM495S",  "Housing"),
+    ("S&P/CS Home Price Index",          "CSUSHPISA",      "Housing"),
+    # Consumer & Retail
+    ("Retail & Food Services ($mn)",     "RSAFS",          "Consumer & Retail"),
+    ("Personal Consumption ($bn)",       "PCE",            "Consumer & Retail"),
+    ("Consumer Sentiment (U Mich)",      "UMCSENT",        "Consumer & Retail"),
+    ("Personal Savings Rate (%)",        "PSAVERT",        "Consumer & Retail"),
+    # Manufacturing
+    ("Industrial Production (Index)",    "INDPRO",         "Manufacturing"),
+    ("Capacity Utilisation (%)",         "TCU",            "Manufacturing"),
+    ("Durable Goods Orders ($mn)",       "DGORDER",        "Manufacturing"),
+    # Trade & Credit
+    ("Trade Balance ($mn)",              "BOPGSTB",        "Trade & Credit"),
+    ("TED Spread (bp)",                  "TEDRATE",        "Trade & Credit"),
 ]
 
-ECON_COLS   = ["Indicator", "Freq", "Latest Value", "Latest Date",
-               "Prior Value", "Prior Date", "Change", "Trend ▲▼"]
-ECON_WIDTHS = [40, 10, 15, 14, 15, 14, 14, 18]
+QUARTERLY_INDICATORS = [
+    ("Real GDP ($bn, 2017 chained)",     "GDP",            "Growth"),
+    ("Real GDP Per Capita ($)",          "A939RX0Q048SBEA","Growth"),
+    ("Exports of Goods & Services",      "EXPGS",          "Trade"),
+    ("Imports of Goods & Services",      "IMPGS",          "Trade"),
+    ("Credit Card Delinquency Rate (%)", "DRCCLACBS",      "Credit"),
+]
+
+# ── date period helpers ───────────────────────────────────────────────────────
+
+def monthly_periods(n=6):
+    """Last n calendar months as (year, month, label), oldest first."""
+    today = datetime.today()
+    result = []
+    for i in range(n - 1, -1, -1):
+        m = today.month - i
+        y = today.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        result.append((y, m, datetime(y, m, 1).strftime("%b '%y")))
+    return result
+
+def quarterly_periods(n=6):
+    """Last n quarters as (year, q_start_month, q_num, label), oldest first."""
+    today = datetime.today()
+    cur_q = (today.month - 1) // 3
+    result = []
+    for i in range(n - 1, -1, -1):
+        q = cur_q - i
+        y = today.year
+        while q < 0:
+            q += 4
+            y -= 1
+        m = q * 3 + 1
+        result.append((y, m, q + 1, f"Q{q + 1} '{str(y)[2:]}"))
+    return result
+
+def val_for_month(df, year, month):
+    if df is None:
+        return None
+    sub = df[(df.index.year == year) & (df.index.month == month)]
+    return round(float(sub.iloc[-1, 0]), 2) if not sub.empty else None
+
+def val_for_quarter(df, year, q_start_month):
+    if df is None:
+        return None
+    sub = df[(df.index.year == year) &
+             (df.index.month >= q_start_month) &
+             (df.index.month <= q_start_month + 2)]
+    return round(float(sub.iloc[-1, 0]), 2) if not sub.empty else None
+
+# ── sheet builder helpers ─────────────────────────────────────────────────────
+
+C_SUBSECTION = "4472C4"   # lighter blue for topic sub-headers
+
+def write_freq_headers(ws, row, period_labels, ncols):
+    """Write the column header row: Indicator | p1 | p2 … p6 | Chg."""
+    span = get_column_letter(ncols)
+    headers = ["Indicator"] + list(period_labels) + ["Chg"]
+    for ci, h in enumerate(headers, 1):
+        style_col_header(ws.cell(row=row, column=ci), h)
+    ws.row_dimensions[row].height = 28
+
+def write_subsection(ws, row, text, ncols):
+    span = get_column_letter(ncols)
+    ws.merge_cells(f"A{row}:{span}{row}")
+    c = ws.cell(row=row, column=1)
+    c.value = text
+    c.font = Font(bold=True, size=10, color=C_WHITE, name="Calibri")
+    c.fill = solid_fill(C_SUBSECTION)
+    c.alignment = Alignment(horizontal="left", vertical="center", indent=2)
+    c.border = thin_border()
+    ws.row_dimensions[row].height = 17
+
+def write_data_row(ws, row, label, period_vals, ncols):
+    bg = solid_fill(C_LIGHT_GREY if row % 2 == 0 else C_WHITE)
+    non_none = [v for v in period_vals if v is not None]
+    change = round(non_none[-1] - non_none[-2], 2) if len(non_none) >= 2 else None
+
+    all_vals = [label] + list(period_vals) + [change]
+    for ci, v in enumerate(all_vals, 1):
+        c = ws.cell(row=row, column=ci)
+        style_data(c, v, align="left" if ci == 1 else "center",
+                   indent=1 if ci == 1 else 0)
+        c.fill = bg
+        if ci > 1 and isinstance(v, (int, float)):
+            c.number_format = "#,##0.00"
+        if ci == ncols and isinstance(v, (int, float)):
+            colour_by_sign(c, v)
+    ws.row_dimensions[row].height = 17
 
 
 def build_econ_sheet(wb, fred_key):
     ws = wb.create_sheet("Economic Indicators")
     ws.sheet_view.showGridLines = False
-    ws.freeze_panes = "A4"
+    ws.freeze_panes = "B3"   # freeze col A (indicator names) + rows 1-2
 
-    ncols = len(ECON_COLS)
-    span  = get_column_letter(ncols)
+    # 8 columns: Indicator + 6 periods + Change
+    NCOLS = 8
+    SPAN  = get_column_letter(NCOLS)
 
-    ws.merge_cells(f"A1:{span}1")
+    ws.column_dimensions["A"].width = 36
+    for i in range(2, NCOLS):           # B–G = 6 period columns
+        ws.column_dimensions[get_column_letter(i)].width = 10
+    ws.column_dimensions[get_column_letter(NCOLS)].width = 10  # H = Chg
+
+    # Title
+    ws.merge_cells(f"A1:{SPAN}1")
     style_title(ws["A1"], f"US Economic Indicators  —  {datetime.now().strftime('%B %d, %Y')}")
     ws.row_dimensions[1].height = 30
     ws.row_dimensions[2].height = 5
 
-    for i, (h, w) in enumerate(zip(ECON_COLS, ECON_WIDTHS), 1):
-        style_col_header(ws.cell(row=3, column=i), h)
-        ws.column_dimensions[get_column_letter(i)].width = w
-    ws.row_dimensions[3].height = 34
-
     if not fred_key:
-        ws.merge_cells(f"A4:{span}6")
-        msg = ws.cell(row=4, column=1)
+        ws.merge_cells(f"A3:{SPAN}5")
+        msg = ws.cell(row=3, column=1)
         msg.value = (
             "FRED API key required for economic data.\n"
             "Get a free key at: fred.stlouisfed.org/docs/api/api_key.html\n"
@@ -396,75 +470,85 @@ def build_econ_sheet(wb, fred_key):
         msg.alignment = Alignment(horizontal="left", vertical="center",
                                   wrap_text=True, indent=1)
         msg.fill = solid_fill("FFF2CC")
-        ws.row_dimensions[4].height = 60
+        ws.row_dimensions[3].height = 60
         return
 
-    # Infer frequency from FRED series metadata (simple heuristic via data spacing)
-    def infer_freq(df):
-        if df is None or len(df) < 2:
-            return "—"
-        delta = (df.index[-1] - df.index[-2]).days
-        if delta <= 1:   return "daily"
-        if delta <= 8:   return "weekly"
-        if delta <= 35:  return "monthly"
-        return "quarterly"
+    mon_periods = monthly_periods(6)
+    qtr_periods = quarterly_periods(6)
 
-    row = 4
-    for section_name, indicators in ECON_SECTIONS:
-        ws.merge_cells(f"A{row}:{span}{row}")
-        style_section(ws.cell(row=row, column=1), section_name)
-        ws.row_dimensions[row].height = 20
-        row += 1
+    # Fetch all series up front
+    print("  Fetching monthly series …")
+    mon_cache = {}
+    for label, sid, _ in MONTHLY_INDICATORS:
+        print(f"    FRED:{sid} …", end=" ", flush=True)
+        mon_cache[sid] = fetch_fred(sid, fred_key, n=30)
+        print("ok" if mon_cache[sid] is not None else "skip")
 
-        for label, series_id in indicators:
-            print(f"  FRED:{series_id} …", end=" ", flush=True)
-            df = fetch_fred(series_id, fred_key, n=13)
-            print("ok" if df is not None else "skip")
+    print("  Fetching quarterly series …")
+    qtr_cache = {}
+    for label, sid, _ in QUARTERLY_INDICATORS:
+        print(f"    FRED:{sid} …", end=" ", flush=True)
+        qtr_cache[sid] = fetch_fred(sid, fred_key, n=12)
+        print("ok" if qtr_cache[sid] is not None else "skip")
 
-            bg = solid_fill(C_LIGHT_GREY if row % 2 == 0 else C_WHITE)
+    row = 3
 
-            if df is not None and len(df) >= 2:
-                freq       = infer_freq(df)
-                latest_v   = round(df.iloc[-1, 0], 4)
-                latest_d   = df.index[-1].strftime("%Y-%m-%d")
-                prior_v    = round(df.iloc[-2, 0], 4)
-                prior_d    = df.index[-2].strftime("%Y-%m-%d")
-                change     = round(latest_v - prior_v, 4)
-                tail       = df.tail(6).iloc[:, 0].tolist()
-                trend      = " ".join(
-                    "▲" if tail[i] > tail[i - 1] else "▼"
-                    for i in range(1, len(tail))
-                )
-            else:
-                freq = latest_v = latest_d = prior_v = prior_d = change = None
-                trend = "N/A"
+    # ── Monthly section ───────────────────────────────────────────────────────
+    ws.merge_cells(f"A{row}:{SPAN}{row}")
+    c = ws.cell(row=row, column=1)
+    c.value = "MONTHLY INDICATORS"
+    c.font  = Font(bold=True, size=12, color=C_WHITE, name="Calibri")
+    c.fill  = solid_fill(C_DARK_BLUE)
+    c.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+    ws.row_dimensions[row].height = 22
+    row += 1
 
-            row_vals = [label, freq, latest_v, latest_d,
-                        prior_v, prior_d, change, trend]
+    write_freq_headers(ws, row, [p[2] for p in mon_periods], NCOLS)
+    row += 1
 
-            for ci, v in enumerate(row_vals, 1):
-                c = ws.cell(row=row, column=ci)
-                style_data(c, v, align="left" if ci == 1 else "center",
-                           indent=1 if ci == 1 else 0)
-                c.fill = bg
-                if ci in (3, 5):
-                    c.number_format = "#,##0.00"
-                if ci == 7 and isinstance(v, (int, float)):
-                    c.number_format = "#,##0.00"
-                    colour_by_sign(c, v)
-                if ci == 8:
-                    c.font = Font(name="Calibri", size=11)
-
-            ws.row_dimensions[row].height = 18
+    cur_sub = None
+    for label, sid, subsection in MONTHLY_INDICATORS:
+        if subsection != cur_sub:
+            write_subsection(ws, row, subsection, NCOLS)
             row += 1
-
+            cur_sub = subsection
+        period_vals = [val_for_month(mon_cache.get(sid), y, m)
+                       for y, m, _ in mon_periods]
+        write_data_row(ws, row, label, period_vals, NCOLS)
         row += 1
 
-    ws.merge_cells(f"A{row}:{span}{row}")
+    row += 1  # gap between sections
+
+    # ── Quarterly section ─────────────────────────────────────────────────────
+    ws.merge_cells(f"A{row}:{SPAN}{row}")
+    c = ws.cell(row=row, column=1)
+    c.value = "QUARTERLY INDICATORS"
+    c.font  = Font(bold=True, size=12, color=C_WHITE, name="Calibri")
+    c.fill  = solid_fill(C_DARK_BLUE)
+    c.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+    ws.row_dimensions[row].height = 22
+    row += 1
+
+    write_freq_headers(ws, row, [p[3] for p in qtr_periods], NCOLS)
+    row += 1
+
+    cur_sub = None
+    for label, sid, subsection in QUARTERLY_INDICATORS:
+        if subsection != cur_sub:
+            write_subsection(ws, row, subsection, NCOLS)
+            row += 1
+            cur_sub = subsection
+        period_vals = [val_for_quarter(qtr_cache.get(sid), y, m)
+                       for y, m, _, __ in qtr_periods]
+        write_data_row(ws, row, label, period_vals, NCOLS)
+        row += 1
+
+    row += 1
+    ws.merge_cells(f"A{row}:{SPAN}{row}")
     note = ws.cell(row=row, column=1,
                    value=("Source: Federal Reserve Bank of St. Louis (FRED)  |  "
-                          "Trend arrows = last 6 observations  |  "
-                          "Change = latest minus prior observation"))
+                          "Columns = last 6 periods, oldest → newest  |  "
+                          "Chg = latest minus prior period"))
     note.font = Font(italic=True, size=9, color="808080", name="Calibri")
     note.alignment = Alignment(horizontal="left")
 
